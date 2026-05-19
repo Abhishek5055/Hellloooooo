@@ -1,0 +1,133 @@
+Sql
+Database......
+CREATE DATABASE asset_ms;
+USE asset_ms;
+
+-- Table for User Registration and Login
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL
+);
+
+-- Table for Asset Management
+CREATE TABLE assets (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    asset_name VARCHAR(100) NOT NULL,
+    category VARCHAR(50),
+    asset_condition VARCHAR(50),
+    status VARCHAR(20) DEFAULT 'Active'
+);
+
+
+DBConnection......
+
+package com.assetms.util;
+import java.sql.Connection;
+import java.sql.DriverManager;
+
+public class DBConnection {
+    public static Connection getConnection() {
+        Connection con = null;
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            con = DriverManager.getConnection("jdbc:mysql://localhost:3306/asset_ms", "root", "your_password");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return con;
+    }
+}
+
+
+
+RegisterServlet......
+
+
+package com.assetms.servlet;
+import com.assetms.util.DBConnection;
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.*;
+
+@WebServlet("/RegisterServlet")
+public class RegisterServlet extends HttpServlet {
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        String uname = request.getParameter("username");
+        String pass = request.getParameter("password");
+        
+        try (Connection con = DBConnection.getConnection()) {
+            PreparedStatement ps = con.prepareStatement("INSERT INTO users(username, password) VALUES(?, ?)");
+            ps.setString(1, uname);
+            ps.setString(2, pass); // Note: In production, hash this password (e.g., using BCrypt)
+            ps.executeUpdate();
+            response.sendRedirect("login.jsp?msg=registered");
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.sendRedirect("register.jsp?error=true");
+        }
+    }
+}
+
+
+
+
+LoginServlet.......
+
+package com.assetms.servlet;
+import com.assetms.util.DBConnection;
+import java.io.IOException;
+import java.sql.*;
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.*;
+
+@WebServlet("/LoginServlet")
+public class LoginServlet extends HttpServlet {
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        String uname = request.getParameter("username");
+        String pass = request.getParameter("password");
+        
+        try (Connection con = DBConnection.getConnection()) {
+            PreparedStatement ps = con.prepareStatement("SELECT * FROM users WHERE username=? AND password=?");
+            ps.setString(1, uname);
+            ps.setString(2, pass);
+            ResultSet rs = ps.executeQuery();
+            
+            if (rs.next()) {
+                HttpSession session = request.getSession();
+                session.setAttribute("user", uname);
+                response.sendRedirect("create_asset.jsp");
+            } else {
+                response.sendRedirect("login.jsp?error=invalid");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+
+
+
+AssetCreateServlet.....
+
+package com.assetms.servlet;
+import com.assetms.util.DBConnection;
+import java.io.IOException;
+import java.sql.*;
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.*;
+
+@WebServlet("/AssetCreateServlet")
+public class AssetCreateServlet extends HttpServlet {
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        String name = request.getParameter("asset_name");
+        String category = request.getParameter("category");
+        String condition = request.getParameter("asset_condition");
+        
+        try (Connection c
